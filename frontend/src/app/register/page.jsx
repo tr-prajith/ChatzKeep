@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { registerUser } from "../api/auth";
+import { registerUser } from "../services/api/auth";
 import { Eye, EyeOff } from "lucide-react";
 
 const Register = () => {

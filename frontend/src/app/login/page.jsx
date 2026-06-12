@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { loginUser } from "../api/auth";
+import { loginUser } from "../services/api/auth";
 import { CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 const Login = () => {

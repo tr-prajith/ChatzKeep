@@ -13,7 +13,7 @@ import {
   getMessages,
   getUsers,
   uploadFile,
-} from "../api/auth";
+} from "../services/api/auth";
 
 const Chat = () => {
   const [socket, setSocket] = useState(null);

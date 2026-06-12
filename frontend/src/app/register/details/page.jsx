@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { completeProfile } from '../../api/auth';
+import { completeProfile } from '../../services/api/auth';
 
 const Details = () => {
   const [address, setAddress] = useState("");

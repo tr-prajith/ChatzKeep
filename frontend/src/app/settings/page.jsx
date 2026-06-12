@@ -6,7 +6,7 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
 import Notifications from "../components/Notifications";
 import { connectSocket } from "../socket/socket";
-import { getCurrentUser, updateProfile, getChats } from "../api/auth"; // Imported getChats
+import { getCurrentUser, updateProfile, getChats } from "../services/api/auth"; // Imported getChats
 const MapPreview = dynamic(() => import("../components/MapPreview"), { ssr: false });
 
 const Settings = () => {
