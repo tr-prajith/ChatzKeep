@@ -13,31 +13,29 @@ const getAllUsers = async (req, res) => {
 // settingd
 const updateProfile = async (req, res) => {
   try {
-    const {
-      firstName,
-      lastName,
-      bio,
-      phone,
-      address,
-      city,
-      state,
-      pincode,
-      profileImage,
-    } = req.body;
+    const updateData = {};
+
+    const allowedFields = [
+      "firstName",
+      "lastName",
+      "bio",
+      "phone",
+      "address",
+      "city",
+      "state",
+      "pincode",
+      "profileImage",
+    ];
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      {
-        firstName,
-        lastName,
-        bio,
-        phone,
-        address,
-        city,
-        state,
-        pincode,
-        profileImage,
-      },
+      updateData,
       { new: true }
     ).select("-password");
 
@@ -52,6 +50,4 @@ const updateProfile = async (req, res) => {
     });
   }
 };
-
-
 module.exports = { getAllUsers, updateProfile };
