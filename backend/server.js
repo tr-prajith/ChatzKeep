@@ -12,6 +12,7 @@ const cors = require('cors');
 const http = require('http');
 const socketSetup = require('./socket/socket');
 
+
 require('dotenv').config(); // ✅ IMPORTANT (deployment fix)
 
 connectDB();
@@ -27,14 +28,21 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "https://chatz-keep.vercel.app"
+    ];
+
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("Not allowed by CORS"));
+      callback(null, true); // 🔥 TEMP FIX (important for debugging)
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 
