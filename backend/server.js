@@ -21,15 +21,17 @@ const server = http.createServer(app);
 // socket
 socketSetup(server);
 
+// CORS
+app.use(cors({
+  origin:" https://chatz-keep.vercel.app",
+  credentials: true
+}));
+
+
 // middlewares
 app.use(cookieParser());
 app.use(express.json());
 
-// CORS
-app.use(cors({
-  origin: process.env.CLIENT_URL,
-  credentials: true
-}));
 
 // Routes
 app.use('/auth', authRoutes);
