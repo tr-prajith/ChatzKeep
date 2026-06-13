@@ -1,12 +1,7 @@
 import axios from "axios";
 
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-
-// ==========================================
-// IMPORTANT FIX: consistent credentials config
-// ==========================================
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 axios.defaults.withCredentials = true;
 
