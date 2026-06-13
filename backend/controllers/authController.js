@@ -23,23 +23,12 @@ const register = async (req, res) => {
             password: hashedPassword,
             phone
         })
-        const token = jwt.sign(
-            { id: user._id },
-            process.env.JWT_SECRET,
-            { expiresIn: "7d" }
-        );
-
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: true,        
-            sameSite: "none",    
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+      
 
         res.status(201).json({
             success: true,
             message: 'Registration Step 1 completed',
-            user
+            userId: user._id,
         })
 
     } catch (error) {
@@ -70,7 +59,7 @@ const login = async (req, res) => {
         if (!isMatch) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid Credentials'
+                message: 'User Not Found, Please Register'
             })
         }
 
@@ -82,8 +71,8 @@ const login = async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: false,
-            sameSite: "lax",
+            secure: true,
+            sameSite: "none",
             maxAge: 7 * 24 * 60 * 60 * 1000
         })
 

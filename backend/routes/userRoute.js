@@ -10,7 +10,7 @@ const { getCurrentUser, completeProfile } = require('../controllers/authControll
 
 router.get("/all", protect ,getAllUsers);
 router.get("/me", protect, getCurrentUser);
-router.put('/details',protect,completeProfile)
+router.put('/details',completeProfile)
 router.put("/profile", protect, updateProfile);
 
 

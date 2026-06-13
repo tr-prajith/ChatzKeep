@@ -106,7 +106,7 @@ const Settings = () => {
 
     return () => {
       sock.off("receiveMessage", handleMessage);
-      // ❌ DO NOT disconnect
+      
     };
   }, [currentUser]);
 

@@ -32,13 +32,13 @@ const Chat = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [liveAlerts, setLiveAlerts] = useState([]);
 
-  // Use a ref to guarantee our functions always have access to the latest socket instance immediately
+
   const socketRef = useRef(null);
 
-  // 1. Core Lifecycle: Establish/Retrieve Socket Connection stably across page mounts
+ 
 
   useEffect(() => {
-    if (socketRef.current) return; // prevent double connect in Strict Mode
+    if (socketRef.current) return; 
 
     const sock = connectSocket();
     socketRef.current = sock;
@@ -63,7 +63,7 @@ const Chat = () => {
     socketRef.current.emit("setupUser", currentUser._id);
   }, [currentUser]);
 
-  // 2. Load basic user directories & profile configurations
+  
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -88,13 +88,12 @@ const Chat = () => {
     loadUser();
   }, []);
 
-  // 3. Keep Socket Event Stream Handlers persistent without breaking the channel
+  
   useEffect(() => {
     const activeSocket = socketRef.current || socket;
     if (!activeSocket) return;
 
-    // ✅ THE CRITICAL FIX: Turn off any previous listener instance before attaching the new one
-    // This stops messages from "vanishing" after changing pages and clicking a user thread
+
     activeSocket.off("receiveMessage");
 
     const handleIncomingMessage = (msg) => {
@@ -164,7 +163,7 @@ const Chat = () => {
   const sendMessage = (e) => {
     if (e) e.preventDefault();
 
-    // Use socketRef to make sure it functions even if the state version hasn't caught up yet
+   
     const activeSocket = socketRef.current || socket;
 
     if (!activeSocket || !chatId || !text.trim() || !currentUser) {
@@ -203,7 +202,7 @@ const Chat = () => {
     }
   };
 
-  // Load chat layouts indexers
+
   useEffect(() => {
     const loadChats = async () => {
       try {
