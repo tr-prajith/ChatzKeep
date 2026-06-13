@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { connectSocket } from "../socket/socket";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
-import Notifications from "../components/Notifications"; 
+import Notifications from "../components/Notifications";
 
 import {
   accessChat,
@@ -32,7 +32,17 @@ const Chat = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [liveAlerts, setLiveAlerts] = useState([]);
 
-  // Load users
+  // 1. Core Lifecycle: Establish Socket Connection exactly ONCE on mount
+  useEffect(() => {
+    const sock = connectSocket();
+    setSocket(sock);
+
+    return () => {
+      sock.disconnect();
+    };
+  }, []);
+
+  // 2. Load basic user directories & metadata profile configurations
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -45,7 +55,6 @@ const Chat = () => {
     fetchUsers();
   }, []);
 
-  // Load current user
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -58,19 +67,28 @@ const Chat = () => {
     loadUser();
   }, []);
 
-  // Socket connection & real-time message stream handling
+  // 3. Keep Socket Event Stream Handlers persistent without breaking the channel
   useEffect(() => {
-    const sock = connectSocket();
-    setSocket(sock);
+    if (!socket) return;
 
-    sock.on("receiveMessage", (msg) => {
-      setMessages((prev) => [...prev, msg]);
-
+    const handleIncomingMessage = (msg) => {
+      // Avoid pushing the message to state twice if this client was the sender
       const senderId = typeof msg.sender === "object" ? msg.sender?._id : msg.sender;
-      
-      if (senderId && currentUser && senderId !== currentUser._id) {
+      const currentUserId = currentUser?._id;
+
+      // Ensure the incoming message belongs to our currently open chat room execution context
+      if (msg.chatId === chatId || msg.chat === chatId) {
+        setMessages((prev) => {
+          // Guard against duplicate message prints
+          if (prev.some((existingMsg) => existingMsg._id === msg._id)) return prev;
+          return [...prev, msg];
+        });
+      }
+
+      // Notification Logic
+      if (senderId && currentUserId && senderId !== currentUserId) {
         const senderProfile = users.find((u) => u._id === senderId);
-        
+
         const freshAlert = {
           _id: msg._id || Date.now().toString(),
           senderName: senderProfile?.firstName || msg.senderName || "New Message",
@@ -81,21 +99,22 @@ const Chat = () => {
 
         setLiveAlerts((prev) => [freshAlert, ...prev]);
       }
-    });
+    };
+
+    socket.on("receiveMessage", handleIncomingMessage);
 
     return () => {
-      sock.off("receiveMessage");
-      sock.disconnect();
+      socket.off("receiveMessage", handleIncomingMessage);
     };
-  }, [currentUser, users]);
+  }, [socket, chatId, currentUser, users]);
 
-  // Join room
+  // 4. Handle Joining Room Execution States
   useEffect(() => {
     if (!socket || !chatId) return;
     socket.emit("joinChat", chatId);
   }, [socket, chatId]);
 
-  // Open chat from user directory list
+  // Open chat from user list
   const handleUserClick = async (userId) => {
     try {
       const clickedUser = users.find((user) => user._id === userId);
@@ -111,7 +130,7 @@ const Chat = () => {
     }
   };
 
-  // Open chat from conversation list history panel
+  // Open chat from history feed panel
   const handleChatClick = async (chat) => {
     try {
       setChatId(chat._id);
@@ -125,18 +144,21 @@ const Chat = () => {
     }
   };
 
-  // Send message
+  // Send message implementation
   const sendMessage = (e) => {
     if (e) e.preventDefault();
-    if (!socket || !chatId || !text || !currentUser) return;
+    if (!socket || !chatId || !text.trim() || !currentUser) return;
 
-    socket.emit("sendMessage", {
+    const payload = {
       chatId,
       senderId: currentUser._id,
-      text,
+      text: text.trim(),
       file: uploadedFile,
-    });
+    };
 
+    // Note: Instead of constructing a temporary local item that vanishes when overridden 
+    // by database structural schemas, we allow the socket socket payload reflection back to handle updates safely.
+    socket.emit("sendMessage", payload);
     setText("");
   };
 
@@ -155,14 +177,13 @@ const Chat = () => {
     }
   };
 
-  
+  // Load chat layouts indexers
   useEffect(() => {
     const loadChats = async () => {
       try {
         const data = await getChats();
         setChats(data || []);
 
-        
         if (currentUser && data) {
           const processedAlerts = data
             .map((chat) => {
@@ -185,13 +206,12 @@ const Chat = () => {
         console.error("Failed structural processing constraints layout parameters:", err);
       }
     };
-    
+
     if (currentUser) {
       loadChats();
     }
   }, [currentUser]);
 
-  
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
@@ -212,19 +232,16 @@ const Chat = () => {
 
   return (
     <div className="h-screen w-full bg-[#FAFAFA] flex font-sans overflow-hidden text-[#111111]">
-      
       <Sidebar />
-
       <div className="flex-1 h-full flex flex-col overflow-hidden">
-
-        <Header 
-          title="Message" 
-          search={search} 
-          setSearch={setSearch} 
-          currentUser={currentUser} 
+        <Header
+          title="Message"
+          search={search}
+          setSearch={setSearch}
+          currentUser={currentUser}
           onNotificationClick={() => setShowNotifPanel(!showNotifPanel)}
         >
-          <Notifications 
+          <Notifications
             isOpen={showNotifPanel}
             onClose={() => setShowNotifPanel(false)}
             notifications={liveAlerts}
@@ -233,8 +250,8 @@ const Chat = () => {
 
         <main className="flex-1 p-6 overflow-hidden bg-[#FAFAFA]">
           <div className="w-full h-full bg-white border border-[#2F8D78] rounded-[24px] flex overflow-hidden shadow-sm">
-
             
+            {/* Thread History Column Sidebar */}
             <div className="w-[340px] h-full border-r border-[#EEEEEE] flex flex-col shrink-0">
               <div className="p-4 border-b border-[#EEEEEE] space-y-3">
                 <div className="flex border-b border-neutral-100 text-xs font-medium text-neutral-400">
@@ -262,7 +279,6 @@ const Chat = () => {
                 </div>
               </div>
 
-              
               <div className="flex-1 overflow-y-auto divide-y divide-neutral-50">
                 {search ? (
                   users
@@ -317,7 +333,7 @@ const Chat = () => {
               </div>
             </div>
 
-           
+            {/* Conversation Core Interface Pane */}
             <div className="flex-1 h-full flex flex-col bg-white">
               {selectedUser ? (
                 <>
@@ -331,7 +347,7 @@ const Chat = () => {
                         <span className="text-[10px] text-emerald-500 font-medium block">● Online</span>
                       </div>
                     </div>
-                    <button 
+                    <button
                       type="button"
                       className="text-xs font-medium text-[#2F8D78] border border-[#2F8D78]/20 px-3 py-1.5 rounded-lg hover:bg-[#2F8D78]/5 transition-colors"
                     >
@@ -360,7 +376,7 @@ const Chat = () => {
                     <div ref={messagesEndRef}></div>
                   </div>
 
-                  
+                  {/* Message Input Controls Area */}
                   <form onSubmit={sendMessage} className="h-16 w-full border-t border-[#EEEEEE] px-4 flex items-center gap-3 shrink-0 bg-white">
                     <input
                       type="text"
@@ -370,7 +386,7 @@ const Chat = () => {
                       className="flex-1 h-10 px-4 text-xs bg-[#FAFAFA] border border-[#EEEEEE] rounded-xl outline-none focus:bg-transparent focus:border-[#2F8D78] transition-all"
                     />
                     <input
-                      type="file" 
+                      type="file"
                       accept="image/*,.pdf"
                       onChange={handleFileUpload}
                       className="text-xs"
