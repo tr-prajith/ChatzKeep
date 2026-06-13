@@ -28,7 +28,7 @@ const register = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Registration Step 1 completed',
-            userId: user._id,
+            user
         })
 
     } catch (error) {
