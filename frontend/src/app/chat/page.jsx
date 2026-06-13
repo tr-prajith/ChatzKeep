@@ -32,17 +32,38 @@ const Chat = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [liveAlerts, setLiveAlerts] = useState([]);
 
-  // 1. Core Lifecycle: Establish Socket Connection exactly ONCE on mount
+  // Use a ref to guarantee our functions always have access to the latest socket instance immediately
+  const socketRef = useRef(null);
+
+  // 1. Core Lifecycle: Establish/Retrieve Socket Connection stably across page mounts
+
   useEffect(() => {
+    if (socketRef.current) return; // prevent double connect in Strict Mode
+
     const sock = connectSocket();
+    socketRef.current = sock;
     setSocket(sock);
 
     return () => {
       sock.disconnect();
+      socketRef.current = null;
     };
   }, []);
 
-  // 2. Load basic user directories & metadata profile configurations
+
+  useEffect(() => {
+    if (!socketRef.current || !chatId) return;
+
+    socketRef.current.emit("joinChat", chatId);
+  }, [chatId]);
+
+  useEffect(() => {
+    if (!socketRef.current || !currentUser?._id) return;
+
+    socketRef.current.emit("setupUser", currentUser._id);
+  }, [currentUser]);
+
+  // 2. Load basic user directories & profile configurations
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -69,23 +90,24 @@ const Chat = () => {
 
   // 3. Keep Socket Event Stream Handlers persistent without breaking the channel
   useEffect(() => {
-    if (!socket) return;
+    const activeSocket = socketRef.current || socket;
+    if (!activeSocket) return;
+
+    // ✅ THE CRITICAL FIX: Turn off any previous listener instance before attaching the new one
+    // This stops messages from "vanishing" after changing pages and clicking a user thread
+    activeSocket.off("receiveMessage");
 
     const handleIncomingMessage = (msg) => {
-      // Avoid pushing the message to state twice if this client was the sender
       const senderId = typeof msg.sender === "object" ? msg.sender?._id : msg.sender;
       const currentUserId = currentUser?._id;
 
-      // Ensure the incoming message belongs to our currently open chat room execution context
       if (msg.chatId === chatId || msg.chat === chatId) {
         setMessages((prev) => {
-          // Guard against duplicate message prints
           if (prev.some((existingMsg) => existingMsg._id === msg._id)) return prev;
           return [...prev, msg];
         });
       }
 
-      // Notification Logic
       if (senderId && currentUserId && senderId !== currentUserId) {
         const senderProfile = users.find((u) => u._id === senderId);
 
@@ -101,18 +123,12 @@ const Chat = () => {
       }
     };
 
-    socket.on("receiveMessage", handleIncomingMessage);
+    activeSocket.on("receiveMessage", handleIncomingMessage);
 
     return () => {
-      socket.off("receiveMessage", handleIncomingMessage);
+      activeSocket.off("receiveMessage", handleIncomingMessage);
     };
   }, [socket, chatId, currentUser, users]);
-
-  // 4. Handle Joining Room Execution States
-  useEffect(() => {
-    if (!socket || !chatId) return;
-    socket.emit("joinChat", chatId);
-  }, [socket, chatId]);
 
   // Open chat from user list
   const handleUserClick = async (userId) => {
@@ -147,18 +163,28 @@ const Chat = () => {
   // Send message implementation
   const sendMessage = (e) => {
     if (e) e.preventDefault();
-    if (!socket || !chatId || !text.trim() || !currentUser) return;
+
+    // Use socketRef to make sure it functions even if the state version hasn't caught up yet
+    const activeSocket = socketRef.current || socket;
+
+    if (!activeSocket || !chatId || !text.trim() || !currentUser) {
+      console.warn("Message dropped: Connection state not ready.");
+      return;
+    }
+
+    const receiverId = selectedUser?._id;
 
     const payload = {
       chatId,
       senderId: currentUser._id,
+      receiverId: receiverId || null,
       text: text.trim(),
+      senderName: currentUser.firstName || currentUser.email?.split("@")[0] || "User",
+      senderAvatar: currentUser.avatar || null,
       file: uploadedFile,
     };
 
-    // Note: Instead of constructing a temporary local item that vanishes when overridden 
-    // by database structural schemas, we allow the socket socket payload reflection back to handle updates safely.
-    socket.emit("sendMessage", payload);
+    activeSocket.emit("sendMessage", payload);
     setText("");
   };
 
@@ -250,7 +276,7 @@ const Chat = () => {
 
         <main className="flex-1 p-6 overflow-hidden bg-[#FAFAFA]">
           <div className="w-full h-full bg-white border border-[#2F8D78] rounded-[24px] flex overflow-hidden shadow-sm">
-            
+
             {/* Thread History Column Sidebar */}
             <div className="w-[340px] h-full border-r border-[#EEEEEE] flex flex-col shrink-0">
               <div className="p-4 border-b border-[#EEEEEE] space-y-3">

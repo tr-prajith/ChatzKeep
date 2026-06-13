@@ -1,17 +1,26 @@
 import { io } from "socket.io-client";
 
-let socket;
+let socket = null;
 
-// ✅ MUST be backend URL in production
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export const connectSocket = () => {
-  if (!socket) {
+  if (!socket || !socket.connected) {
     socket = io(SOCKET_URL, {
       withCredentials: true,
-      transports: ["websocket", "polling"], // ✅ IMPORTANT for deployment stability
+      transports: ["websocket", "polling"],
       reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+    });
+
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Socket disconnected");
     });
   }
 

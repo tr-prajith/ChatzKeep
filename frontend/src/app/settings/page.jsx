@@ -46,7 +46,7 @@ const Settings = () => {
     loadUser();
   }, []);
 
-  
+
   useEffect(() => {
     const loadNotificationChats = async () => {
       try {
@@ -83,24 +83,30 @@ const Settings = () => {
   useEffect(() => {
     const sock = connectSocket();
 
-    sock.on("receiveMessage", (msg) => {
-      const senderId = typeof msg.sender === "object" ? msg.sender?._id : msg.sender;
-      
+    const handleMessage = (msg) => {
+      const senderId = typeof msg.sender === "object"
+        ? msg.sender?._id
+        : msg.sender;
+
       if (senderId && currentUser && senderId !== currentUser._id) {
-        const freshAlert = {
-          _id: msg._id || Date.now().toString(),
-          senderName: msg.senderName || "Admin Hospital",
-          senderAvatar: msg.senderAvatar || null,
-          text: msg.text || "Sent a file attachment.",
-          createdAt: msg.createdAt || new Date().toISOString()
-        };
-        setLiveAlerts((prev) => [freshAlert, ...prev]);
+        setLiveAlerts((prev) => [
+          {
+            _id: msg._id || Date.now().toString(),
+            senderName: msg.senderName || "Admin Hospital",
+            senderAvatar: msg.senderAvatar || null,
+            text: msg.text || "Sent a file attachment.",
+            createdAt: msg.createdAt || new Date().toISOString(),
+          },
+          ...prev,
+        ]);
       }
-    });
+    };
+
+    sock.on("receiveMessage", handleMessage);
 
     return () => {
-      sock.off("receiveMessage");
-      sock.disconnect();
+      sock.off("receiveMessage", handleMessage);
+      // ❌ DO NOT disconnect
     };
   }, [currentUser]);
 
@@ -131,12 +137,12 @@ const Settings = () => {
       <Sidebar />
 
       <div className="flex-1 h-full flex flex-col overflow-hidden">
-        <Header 
-          title="Settings" 
-          currentUser={currentUser} 
+        <Header
+          title="Settings"
+          currentUser={currentUser}
           onNotificationClick={() => setShowNotifPanel(!showNotifPanel)}
         >
-          <Notifications 
+          <Notifications
             isOpen={showNotifPanel}
             onClose={() => setShowNotifPanel(false)}
             notifications={liveAlerts}
@@ -144,7 +150,7 @@ const Settings = () => {
         </Header>
 
         <main className="flex-1 p-6 flex gap-6 overflow-hidden bg-[#FAFAFA]">
-          
+
           <div className="w-[200px] h-full bg-white border border-[#EEEEEE] rounded-[24px] p-4 shrink-0 shadow-sm">
             <button className="w-full flex items-center gap-2.5 px-4 py-2.5 bg-[#F4FBF9] text-[#1F6E5C] font-medium text-xs rounded-xl transition-all">
               <span>📋</span>
