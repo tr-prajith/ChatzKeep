@@ -4,7 +4,7 @@ const connectDB = require('./config/db');
 
 const authRoutes = require('./routes/authRoute');
 const chatRoutes = require('./routes/chatRoutes');
-const messageRoutes = require('./routes/messageRroute');
+const messageRoutes = require('./routes/messageRoute');
 const userRoutes = require('./routes/userRoute');
 
 const cookieParser = require('cookie-parser');
@@ -21,12 +21,20 @@ const server = http.createServer(app);
 // socket
 socketSetup(server);
 
-// CORS 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://chatz-keep.vercel.app"
+];
+
 app.use(cors({
-  origin: "https://chatz-keep.vercel.app",
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
 }));
 
 
