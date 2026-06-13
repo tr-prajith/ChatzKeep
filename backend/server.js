@@ -24,20 +24,15 @@ socketSetup(server);
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://chatz-keep.vercel.app"
+  process.env.CLIENT_URL
 ];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      "http://localhost:3000",
-      "https://chatz-keep.vercel.app"
-    ];
-
+  origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // 🔥 TEMP FIX (important for debugging)
+      callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
