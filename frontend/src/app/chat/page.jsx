@@ -34,34 +34,40 @@ const Chat = () => {
 
   const socketRef = useRef(null);
 
- 
+  // 1. Initial User Hydration: Fetch profile information first
   useEffect(() => {
-    const sock = connectSocket();
+    const loadUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error("Error verifying authentication profile:", err);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // 2. Core Lifecycle Socket Connection: Wait for the user profile ID to be ready
+  useEffect(() => {
+    if (!currentUser?._id) return;
+
+    // Pass the profile id to fill the backend's handshake auth setup
+    const sock = connectSocket(currentUser._id);
     socketRef.current = sock;
     setSocket(sock);
 
     return () => {
-     
       sock.off("receiveMessage");
     };
-  }, []);
+  }, [currentUser?._id]);
 
-  // 2. JOIN CHAT ROOM
+  // 3. Room Management Hooks
   useEffect(() => {
     const activeSocket = socketRef.current || socket;
     if (!activeSocket || !chatId) return;
 
     activeSocket.emit("joinChat", chatId);
   }, [chatId, socket]);
-
-  // 3. SET USER ON SOCKET
-  useEffect(() => {
-    const activeSocket = socketRef.current || socket;
-    if (!activeSocket || !currentUser?._id) return;
-
-    activeSocket.emit("setupUser", currentUser._id);
-  }, [currentUser, socket]);
-
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -75,19 +81,7 @@ const Chat = () => {
     fetchUsers();
   }, []);
 
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const user = await getCurrentUser();
-        setCurrentUser(user);
-      } catch (err) {
-        console.error("Error verifying authentication profile:", err);
-      }
-    };
-    loadUser();
-  }, []);
-
-  // 4. MESSAGE LISTENER
+  // 4. PERSISTENT LIVE CHAT EVENT STREAM HANDLER
   useEffect(() => {
     const activeSocket = socketRef.current || socket;
     if (!activeSocket) return;
@@ -125,9 +119,9 @@ const Chat = () => {
     return () => {
       activeSocket.off("receiveMessage", handleIncomingMessage);
     };
-  }, [socket, chatId, currentUser, users]);
+  }, [socket, chatId, currentUser?._id, users]);
 
-  // Open chat from user list
+  // Open chat from user directory panel
   const handleUserClick = async (userId) => {
     try {
       const clickedUser = users.find((user) => user._id === userId);
@@ -143,7 +137,7 @@ const Chat = () => {
     }
   };
 
-  // Open chat from history feed panel
+  // Open chat from left sidebar conversation feed
   const handleChatClick = async (chat) => {
     try {
       setChatId(chat._id);
@@ -157,7 +151,7 @@ const Chat = () => {
     }
   };
 
-  // Send message implementation
+  // Send message layout dispatcher
   const sendMessage = (e) => {
     if (e) e.preventDefault();
 
@@ -199,12 +193,27 @@ const Chat = () => {
     }
   };
 
-  // Load chat layouts indexers
+  // 5. LOAD CHATS & AUTO-OPEN RECENT THREAD AFTER LOGIN
   useEffect(() => {
     const loadChats = async () => {
       try {
         const data = await getChats();
         setChats(data || []);
+
+        // ✅ AUTO-OPEN FIX: If the component has loaded chats but no chatId is active yet,
+        // automatically select and re-hydrate the most recent thread object down the stream.
+        if (data && data.length > 0 && !chatId) {
+          const defaultChat = data[0];
+          setChatId(defaultChat._id);
+
+          const otherUser = defaultChat.participants?.find((u) => u._id !== currentUser?._id);
+          if (otherUser) {
+            setSelectedUser(otherUser);
+          }
+
+          const msgs = await getMessages(defaultChat._id);
+          setMessages(msgs || []);
+        }
 
         if (currentUser && data) {
           const processedAlerts = data
@@ -232,7 +241,9 @@ const Chat = () => {
     if (currentUser) {
       loadChats();
     }
-  }, [currentUser]);
+  // Track chatId so this only acts as a fallback when everything is cleanly initialized
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?._id, chatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
