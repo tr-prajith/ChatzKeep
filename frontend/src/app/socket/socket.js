@@ -5,7 +5,7 @@ let socket = null;
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-export const connectSocket = () => {
+export const connectSocket = (userId) => {
   if (!socket || !socket.connected) {
     socket = io(SOCKET_URL, {
       withCredentials: true,
@@ -13,6 +13,11 @@ export const connectSocket = () => {
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+
+      // 🔥 THIS IS REQUIRED
+      auth: {
+        userId,
+      },
     });
 
     socket.on("connect", () => {

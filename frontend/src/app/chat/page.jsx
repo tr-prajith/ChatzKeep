@@ -32,38 +32,37 @@ const Chat = () => {
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const [liveAlerts, setLiveAlerts] = useState([]);
 
-
   const socketRef = useRef(null);
 
  
-
   useEffect(() => {
-    if (socketRef.current) return; 
-
     const sock = connectSocket();
     socketRef.current = sock;
     setSocket(sock);
 
     return () => {
-      sock.disconnect();
-      socketRef.current = null;
+     
+      sock.off("receiveMessage");
     };
   }, []);
 
-
+  // 2. JOIN CHAT ROOM
   useEffect(() => {
-    if (!socketRef.current || !chatId) return;
+    const activeSocket = socketRef.current || socket;
+    if (!activeSocket || !chatId) return;
 
-    socketRef.current.emit("joinChat", chatId);
-  }, [chatId]);
+    activeSocket.emit("joinChat", chatId);
+  }, [chatId, socket]);
 
+  // 3. SET USER ON SOCKET
   useEffect(() => {
-    if (!socketRef.current || !currentUser?._id) return;
+    const activeSocket = socketRef.current || socket;
+    if (!activeSocket || !currentUser?._id) return;
 
-    socketRef.current.emit("setupUser", currentUser._id);
-  }, [currentUser]);
+    activeSocket.emit("setupUser", currentUser._id);
+  }, [currentUser, socket]);
 
-  
+
   useEffect(() => {
     const fetchUsers = async () => {
       try {
@@ -88,11 +87,10 @@ const Chat = () => {
     loadUser();
   }, []);
 
-  
+  // 4. MESSAGE LISTENER
   useEffect(() => {
     const activeSocket = socketRef.current || socket;
     if (!activeSocket) return;
-
 
     activeSocket.off("receiveMessage");
 
@@ -163,7 +161,6 @@ const Chat = () => {
   const sendMessage = (e) => {
     if (e) e.preventDefault();
 
-   
     const activeSocket = socketRef.current || socket;
 
     if (!activeSocket || !chatId || !text.trim() || !currentUser) {
@@ -202,7 +199,7 @@ const Chat = () => {
     }
   };
 
-
+  // Load chat layouts indexers
   useEffect(() => {
     const loadChats = async () => {
       try {
