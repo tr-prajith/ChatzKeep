@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// ✅ MUST be backend deployed URL
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
